@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Química — Calculadora</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; }
+    a { color: inherit; }
+    h1 { font-size: 20px; margin-bottom: 8px; }
+    .box { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
+    label { display: block; margin-top: 12px; font-weight: 600; }
+    input, select { width: 100%; padding: 10px; margin-top: 6px; box-sizing: border-box; }
+    .row { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px; }
+    @media (min-width: 640px){ .row { grid-template-columns: 1fr 1fr; } }
+    .hint { font-size: 12px; color: #666; margin-top: 6px; }
+    .warn { color: #b00020; font-size: 13px; margin-top: 10px; }
+    .ok { color: #0a7a2f; font-size: 13px; margin-top: 10px; }
+    .result { margin-top: 16px; padding: 14px; border-radius: 12px; background: #f5f5f5; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    .topbar { display:flex; justify-content: space-between; align-items:center; gap: 12px; margin-bottom: 12px; }
+    .back { font-size: 13px; color:#444; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>Química — Calculadora de Média</h1>
+    <a class="back" href="index.html">← Voltar</a>
+  </div>
+
+  <div class="box">
+    <div class="hint">
+      Fórmula: <span class="mono">(1*ATIVIDADES + 2*P1 + 2*SEMINÁRIO + 3*P2) / 8</span><br>
+      Notas válidas: 0 a 10
+    </div>
+
+    <label for="ativ">ATIVIDADES (peso 1)</label>
+    <input id="ativ" type="number" inputmode="decimal" step="0.01" min="0" max="10" placeholder="0 a 10" />
+    <div class="hint" id="hint-ativ"></div>
+
+    <label for="p1">P1 (peso 2)</label>
+    <input id="p1" type="number" inputmode="decimal" step="0.01" min="0" max="10" placeholder="0 a 10" />
+    <div class="hint" id="hint-p1"></div>
+
+    <label for="sem">Seminário (peso 2)</label>
+    <input id="sem" type="number" inputmode="decimal" step="0.01" min="0" max="10" placeholder="0 a 10" />
+    <div class="hint" id="hint-sem"></div>
+
+    <label for="p2">P2 (peso 3)</label>
+    <input id="p2" type="number" inputmode="decimal" step="0.01" min="0" max="10" placeholder="0 a 10" />
+    <div class="hint" id="hint-p2"></div>
+
+    <div class="row">
+      <div>
+        <label for="alvo">Meta de média</label>
+        <select id="alvo">
+          <option value="6.8" selected>6,8</option>
+          <option value="6.0">6,0</option>
+        </select>
+        <div class="hint">Escolha a meta para ver “quanto falta”.</div>
+      </div>
+
+      <div>
+        <label for="faltando">Qual nota está faltando?</label>
+        <select id="faltando">
+          <option value="nenhuma">Nenhuma (todas preenchidas)</option>
+          <option value="ativ">ATIVIDADES</option>
+          <option value="p1">P1</option>
+          <option value="sem">Seminário</option>
+          <option value="p2">P2</option>
+        </select>
+        <div class="hint">Se ainda não tem uma nota, selecione aqui.</div>
+      </div>
+    </div>
+
+    <div class="result" id="saida">
+      Preencha as notas (0 a 10). O cálculo atualiza sozinho.
+    </div>
+  </div>
+
+  <script>
+    const pesos = { ativ: 1, p1: 2, sem: 2, p2: 3 };
+    const totalPeso = 8;
+
+    const ids = ["ativ", "p1", "sem", "p2"];
+    const saida = document.getElementById("saida");
+
+    function parseNumero(valor) {
+      if (typeof valor !== "string") return NaN;
+      const v = valor.trim().replace(",", ".");
+      if (v === "") return NaN;
+      return Number(v);
+    }
+
+    function validarCampo(id) {
+      const el = document.getElementById(id);
+      const hint = document.getElementById("hint-" + id);
+      const n = parseNumero(el.value);
+
+      if (el.value.trim() === "") {
+        hint.textContent = "";
+        el.style.borderColor = "";
+        return { ok: false, empty: true, value: NaN };
+      }
+
+      if (!Number.isFinite(n)) {
+        hint.textContent = "⚠️ Digite um número válido.";
+        el.style.borderColor = "#b00020";
+        return { ok: false, empty: false, value: NaN };
+      }
+
+      if (n < 0 || n > 10) {
+        hint.textContent = "⚠️ A nota precisa estar entre 0 e 10.";
+        el.style.borderColor = "#b00020";
+        return { ok: false, empty: false, value: n };
+      }
+
+      hint.textContent = "";
+      el.style.borderColor = "";
+      return { ok: true, empty: false, value: n };
+    }
+
+    function calcularMedia(notas) {
+      const somaPonderada =
+        pesos.ativ * notas.ativ +
+        pesos.p1 * notas.p1 +
+        pesos.sem * notas.sem +
+        pesos.p2 * notas.p2;
+
+      return somaPonderada / totalPeso;
+    }
+
+    function clamp(x, min, max) {
+      return Math.min(Math.max(x, min), max);
+    }
+
+    function nomeCampo(id) {
+      return id === "ativ" ? "ATIVIDADES" :
+             id === "p1"   ? "P1" :
+             id === "sem"  ? "SEMINÁRIO" :
+             id === "p2"   ? "P2" : id;
+    }
+
+    function atualizar() {
+      const estado = {};
+      let temErro = false;
+
+      for (const id of ids) {
+        const v = validarCampo(id);
+        estado[id] = v;
+        if (!v.empty && !v.ok) temErro = true;
+      }
+
+      const alvo = Number(document.getElementById("alvo").value);
+      const faltando = document.getElementById("faltando").value;
+
+      if (temErro) {
+        saida.innerHTML = `⚠️ Corrija as notas inválidas (0 a 10) para calcular.`;
+        return;
+      }
+
+      // --- Caso: nenhuma nota faltando (média final) ---
+      if (faltando === "nenhuma") {
+        const algumVazio = ids.some(id => estado[id].empty);
+        if (algumVazio) {
+          saida.innerHTML = `Preencha todas as notas ou selecione qual está faltando para calcular a meta.`;
+          return;
+        }
+
+        const notas = {
+          ativ: estado.ativ.value,
+          p1: estado.p1.value,
+          sem: estado.sem.value,
+          p2: estado.p2.value
+        };
+
+        // ✅ ARREDONDA ANTES DE COMPARAR (corrige bug do 6.00 reprovado)
+        const media = Number(calcularMedia(notas).toFixed(2));
+        const diff = Number((alvo - media).toFixed(2));
+
+        if (diff <= 0) {
+          saida.innerHTML =
+            `✅ Média: <b>${media.toFixed(2)}</b><br>` +
+            `<span class="ok">APROVADO para meta ${alvo.toFixed(1)}</span>`;
+        } else {
+          saida.innerHTML =
+            `📌 Média: <b>${media.toFixed(2)}</b><br>` +
+            `<span class="warn">REPROVADO para meta ${alvo.toFixed(1)} — faltam <b>${diff.toFixed(2)}</b> pontos</span>`;
+        }
+        return;
+      }
+
+      // --- Caso: uma nota faltando (quanto precisa nessa nota) ---
+      const outras = ids.filter(x => x !== faltando);
+      const algumaOutraVazia = outras.some(id => estado[id].empty);
+
+      if (algumaOutraVazia) {
+        saida.innerHTML =
+          `Preencha as <b>outras 3</b> notas para eu calcular quanto você precisa em <b>${nomeCampo(faltando)}</b> para bater a meta ${alvo.toFixed(1)}.`;
+        return;
+      }
+
+      let somaConhecida = 0;
+      for (const id of outras) somaConhecida += pesos[id] * estado[id].value;
+
+      const w = pesos[faltando];
+      const xNecessario = (alvo * totalPeso - somaConhecida) / w;
+
+      if (xNecessario <= 0) {
+        saida.innerHTML =
+          `✅ Para bater a meta <b>${alvo.toFixed(1)}</b>, você precisa de <b>0.00</b> ou mais em <b>${nomeCampo(faltando)}</b> (já está garantido).`;
+        return;
+      }
+
+      if (xNecessario > 10) {
+        saida.innerHTML =
+          `❌ Para bater a meta <b>${alvo.toFixed(1)}</b>, você precisaria de <b>${xNecessario.toFixed(2)}</b> em <b>${nomeCampo(faltando)}</b>, acima de 10.00 (não dá).`;
+        return;
+      }
+
+      const xClamped = clamp(xNecessario, 0, 10);
+      saida.innerHTML =
+        `📌 Para bater a meta <b>${alvo.toFixed(1)}</b>, você precisa de pelo menos <b>${xClamped.toFixed(2)}</b> em <b>${nomeCampo(faltando)}</b>.`;
+    }
+
+    ids.forEach(id => {
+      document.getElementById(id).addEventListener("input", atualizar);
+      document.getElementById(id).addEventListener("change", atualizar);
+    });
+    document.getElementById("alvo").addEventListener("change", atualizar);
+    document.getElementById("faltando").addEventListener("change", atualizar);
+
+    atualizar();
+  </script>
+</body>
+</html>
