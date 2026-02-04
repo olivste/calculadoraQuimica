@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Programação I — Calculadora</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; }
+    a { color: inherit; }
+    h1 { font-size: 20px; margin-bottom: 8px; }
+    .box { border: 1px solid #ddd; border-radius: 12px; padding: 16px; }
+    label { display: block; margin-top: 12px; font-weight: 600; }
+    input { width: 100%; padding: 10px; margin-top: 6px; box-sizing: border-box; }
+    .hint { font-size: 12px; color: #666; margin-top: 6px; }
+    .warn { color: #b00020; font-size: 13px; margin-top: 10px; }
+    .ok { color: #0a7a2f; font-size: 13px; margin-top: 10px; }
+    .result { margin-top: 16px; padding: 14px; border-radius: 12px; background: #f5f5f5; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    .topbar { display:flex; justify-content: space-between; align-items:center; gap: 12px; margin-bottom: 12px; }
+    .back { font-size: 13px; color:#444; text-decoration:none; }
+    .row { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 640px){ .row { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>Programação I (INF15927) — Calculadora</h1>
+    <a class="back" href="index.html">← Voltar</a>
+  </div>
+
+  <div class="box">
+    <div class="hint">
+      MP = <span class="mono">0,3·P1 + 0,3·P2 + 0,3·TP + 0,1·LE</span><br>
+      Se MP ≥ 7 → aprovado sem PF. Se MP &lt; 7 → MF = (MP + PF)/2 e aprova se MF ≥ 5.<br>
+      Notas válidas: 0 a 10
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="p1">P1</label>
+        <input id="p1" type="number" inputmode="decimal" step="0.01" min="0" max="10" placeholder="0 a 10" />
+        <div class="hint" id="hint-p1"></div>
+      </div>
+      <div>
+        <label for="p2">P2</label>
+        <input id="p2" type="number" inputmode="decimal" step="0.01" min="0" max="10" placeholder="0 a 10" />
+        <div class="hint" id="hint-p2"></div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      <div>
+        <label for="tp">TP (Trabalho Prático)</label>
+        <input id="tp" type="number" inputmode="decimal" step="0.01" min="0" max="10" placeholder="0 a 10" />
+        <div class="hint" id="hint-tp"></div>
+      </div>
+      <div>
+        <label for="le">LE (Listas de Exercícios)</label>
+        <input id="le" type="number" inputmode="decimal" step="0.01" min="0" max="10" placeholder="0 a 10" />
+        <div class="hint" id="hint-le"></div>
+      </div>
+    </div>
+
+    <label for="pf" style="margin-top:12px;">PF (Prova Final — se necessário)</label>
+    <input id="pf" type="number" inputmode="decimal" step="0.01" min="0" max="10" placeholder="Deixe vazio se ainda não fez" />
+    <div class="hint" id="hint-pf"></div>
+
+    <div class="result" id="saida">Preencha as notas. O cálculo atualiza automaticamente.</div>
+  </div>
+
+  <script>
+    const saida = document.getElementById("saida");
+    const campos = ["p1","p2","tp","le","pf"];
+
+    function parseNumero(valor) {
+      if (typeof valor !== "string") return NaN;
+      const v = valor.trim().replace(",", ".");
+      if (v === "") return NaN;
+      return Number(v);
+    }
+
+    function validar(id) {
+      const el = document.getElementById(id);
+      const hint = document.getElementById("hint-" + id);
+      const n = parseNumero(el.value);
+
+      if (el.value.trim() === "") {
+        hint.textContent = "";
+        el.style.borderColor = "";
+        return { empty: true, ok: false, value: NaN };
+      }
+
+      if (!Number.isFinite(n)) {
+        hint.textContent = "⚠️ Digite um número válido.";
+        el.style.borderColor = "#b00020";
+        return { empty: false, ok: false, value: NaN };
+      }
+
+      if (n < 0 || n > 10) {
+        hint.textContent = "⚠️ A nota precisa estar entre 0 e 10.";
+        el.style.borderColor = "#b00020";
+        return { empty: false, ok: false, value: n };
+      }
+
+      hint.textContent = "";
+      el.style.borderColor = "";
+      return { empty: false, ok: true, value: n };
+    }
+
+    function atualizar() {
+      const st = {};
+      let erro = false;
+
+      for (const c of campos) {
